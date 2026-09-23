@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="be">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,8 +11,25 @@
         .lang-switcher { font-size: 0.9rem; font-weight: bold; }
         .lang-switcher a { color: #8b949e; margin-right: 8px; text-decoration: none; }
         .lang-switcher a.active { color: #58a6ff; pointer-events: none; }
-        .nav-menu a { font-weight: bold; background-color: #161b22; border: 1px solid #30363d; padding: 8px 16px; border-radius: 6px; transition: all 0.2s; text-decoration: none; color: #58a6ff; }
-        .nav-menu a:hover { background-color: #21262d; border-color: #58a6ff; }
+        
+        /* Жалезабетонныя стылі для кнопкі блога, каб абысці багі браўзера */
+        .nav-menu a, .nav-menu a:link, .nav-menu a:visited { 
+            font-weight: bold; 
+            background-color: #161b22 !important; 
+            border: 1px solid #30363d !important; 
+            padding: 8px 16px; 
+            border-radius: 6px; 
+            transition: all 0.2s; 
+            text-decoration: none; 
+            color: #58a6ff !important;
+            display: inline-block;
+        }
+        .nav-menu a:hover { 
+            background-color: #21262d !important; 
+            border-color: #58a6ff !important; 
+            color: #58a6ff !important;
+        }
+        
         header { text-align: center; margin-bottom: 40px; }
         h1 { color: #58a6ff; margin-bottom: 5px; font-size: 2.5rem; }
         .subtitle { color: #8b949e; font-size: 1.1rem; }
@@ -39,59 +56,59 @@
 <div class="container">
     <div class="top-bar">
         <div class="lang-switcher">
-            <a href="index.html" class="active">EN</a>
-            <a href="index-be.html">BE</a>
+            <a href="index.html">EN</a>
+            <a href="index-be.html" class="active">BE</a>
             <a href="index-ru.html">RU</a>
             <a href="index-pl.html">PL</a>
         </div>
         <div class="nav-menu">
-            <a href="blog.html">Read My Blog →</a>
+            <a href="blog-be.html">Мой блог →</a>
         </div>
     </div>
     <header>
         <h1>mdof</h1>
-        <div class="subtitle">Video Game Localization into Belarusian</div>
+        <div class="subtitle">Лакалізацыя відэагульняў на беларускую мову</div>
     </header>
     <div class="section">
-        <h2>About Me</h2>
-        <p>Hi! I specialize in official and fan translations of indie video games. I help developers adapt their projects for the Belarusian-speaking community, working with in-game texts, UI elements, and fonts.</p>
+        <h2>Пра мяне</h2>
+        <p>Прывітанне! Я спецыялізуюся на афіцыйных і аматарскіх перакладах індзі-гульняў. Дапамагаю распрацоўшчыкам адаптаваць іх праекты для беларускамоўнай супольнасці, працуючы з гульнявымі тэкстамі, элементамі інтэрфейсу і шрыфтамі.</p>
     </div>
     <div class="section">
-        <h2>Portfolio / Projects</h2>
+        <h2>Партфоліо / Праекты</h2>
         <ul>
             <li>
                 <div class="project-title">FACEMINER (Wristwork, Ltd.)</div>
-                <div class="project-desc">Official Belarusian localization of the user interface for the dark biometric simulation game. Original soundtrack by Madwreck.</div>
+                <div class="project-desc">Афіцыйная беларуская лакалізацыя інтэрфейсу для змрочнага біяметрычнага сімулятара. Арыгінальны саўндтрэк ад Madwreck.</div>
             </li>
             <li>
                 <div class="project-title">Pigeon: A Love Story (Wristwork, Ltd.)</div>
-                <div class="project-desc">Official translation and text adaptation for the meditative pigeon flight game.</div>
+                <div class="project-desc">Афіцыйны пераклад і тэкставая адаптацыя для медытатыўнай гульні пра палёт голуба.</div>
             </li>
         </ul>
     </div>
     <div class="section">
-        <h2>Standard Rates</h2>
+        <h2>Стандартныя тарыфы</h2>
         <div class="rate-item">
-            <span class="rate-lang">Belarusian</span>
-            <span class="rate-price">$0.01<span style="color: #8b949e; font-size: 0.85rem; font-weight: normal;"> / word</span></span>
+            <span class="rate-lang">Беларуская мова</span>
+            <span class="rate-price">$0.01<span style="color: #8b949e; font-size: 0.85rem; font-weight: normal;"> / слова</span></span>
         </div>
         <div class="rate-item">
-            <span class="rate-lang">Russian</span>
-            <span class="rate-price">$0.02<span style="color: #8b949e; font-size: 0.85rem; font-weight: normal;"> / word</span></span>
+            <span class="rate-lang">Руская мова</span>
+            <span class="rate-price">$0.02<span style="color: #8b949e; font-size: 0.85rem; font-weight: normal;"> / слова</span></span>
         </div>
         <div class="rate-item">
-            <span class="rate-lang">Bundle (Both Languages)<span class="rate-badge">Recommended</span></span>
-            <span class="rate-price">$0.025<span style="color: #8b949e; font-size: 0.85rem; font-weight: normal;"> / word</span></span>
+            <span class="rate-lang">Пакет (Абедзве мовы)<span class="rate-badge">Рэкамендуецца</span></span>
+            <span class="rate-price">$0.025<span style="color: #8b949e; font-size: 0.85rem; font-weight: normal;"> / слова</span></span>
         </div>
     </div>
     <div class="section">
-        <h2>Contacts & Blog</h2>
-        <div class="status-badge"><span class="status-dot"></span>Available for Freelance / Contract</div>
-        <p>If you are a developer or want to suggest a project for localization, feel free to reach out:</p>
-        <p>💬 Discord: <button onclick="copyDiscord()" id="discordBtn" style="background: none; border: none; padding: 0; font-family: inherit; font-size: inherit; font-weight: bold; color: #5865F2; cursor: pointer; text-decoration: underline;">mdof.twink</button><span id="copiedText" style="color: #56d364; font-size: 0.85rem; margin-left: 10px; display: none; font-weight: bold;">Copied!</span></p>
+        <h2>Кантакты</h2>
+        <div class="status-badge"><span class="status-dot"></span>Даступны для фрылансу / кантрактаў</div>
+        <p>Калі вы распрацоўшчык або хочаце прапанаваць праект для лакалізацыі, не саромейцеся звяртацца:</p>
+        <p>💬 Discord: <button onclick="copyDiscord()" id="discordBtn" style="background: none; border: none; padding: 0; font-family: inherit; font-size: inherit; font-weight: bold; color: #5865F2; cursor: pointer; text-decoration: underline;">mdof.twink</button><span id="copiedText" style="color: #56d364; font-size: 0.85rem; margin-left: 10px; display: none; font-weight: bold;">Скапіявана!</span></p>
         <p>📧 Email: <a href="mailto:michaldemidowicz@gmail.com">michaldemidowicz@gmail.com</a></p>
     </div>
-    <footer>&copy; 2026 mdof. Powered by GitHub Pages.</footer>
+    <footer>&copy; 2026 mdof. Працуе на GitHub Pages.</footer>
 </div>
 <script>
 function copyDiscord() { navigator.clipboard.writeText("mdof.twink"); var btn = document.getElementById("discordBtn"); var copied = document.getElementById("copiedText"); btn.style.color = "#56d364"; copied.style.display = "inline"; setTimeout(function() { copied.style.display = "none"; btn.style.color = "#5865F2"; }, 2000); }

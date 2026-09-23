@@ -19,6 +19,27 @@
             width: 100%;
             padding: 40px 20px;
         }
+        
+        /* Исправленная навигация сверху */
+        .nav-menu {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 20px;
+        }
+        .nav-menu a {
+            font-weight: bold;
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .nav-menu a:hover {
+            background-color: #21262d;
+            border-color: #58a6ff;
+            text-decoration: none;
+        }
+
         header {
             text-align: center;
             margin-bottom: 40px;
@@ -70,6 +91,68 @@
         a:hover {
             text-decoration: underline;
         }
+        
+        /* Стили для тарифов */
+        .rate-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #21262d;
+        }
+        .rate-item:last-child {
+            border-bottom: none;
+            background-color: rgba(88, 166, 255, 0.05);
+            padding: 12px 10px;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+        .rate-lang {
+            font-weight: 600;
+            color: #c9d1d9;
+        }
+        .rate-price {
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: #56d364;
+            font-weight: bold;
+        }
+        .rate-badge {
+            font-size: 0.8rem;
+            background-color: #388bfd26;
+            color: #58a6ff;
+            padding: 2px 6px;
+            border-radius: 12px;
+            margin-left: 8px;
+        }
+
+        /* Красивый пульсирующий статус-бейдж */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            background-color: rgba(46, 160, 67, 0.1);
+            border: 1px solid rgba(46, 160, 67, 0.4);
+            color: #56d364;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #56d364;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.6; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.6; }
+        }
+
         footer {
             text-align: center;
             margin-top: 40px;
@@ -81,6 +164,11 @@
 <body>
 
 <div class="container">
+    
+    <div class="nav-menu">
+        <a href="blog.html">Read My Blog →</a>
+    </div>
+
     <header>
         <h1>mdof</h1>
         <div class="subtitle">Video Game Localization into Belarusian</div>
@@ -106,16 +194,59 @@
     </div>
 
     <div class="section">
+        <h2>Standard Rates</h2>
+        <div class="rate-item">
+            <span class="rate-lang">Belarusian</span>
+            <span class="rate-price">$0.01<span style="color: #8b949e; font-size: 0.85rem; font-weight: normal;"> / word</span></span>
+        </div>
+        <div class="rate-item">
+            <span class="rate-lang">Russian</span>
+            <span class="rate-price">$0.02<span style="color: #8b949e; font-size: 0.85rem; font-weight: normal;"> / word</span></span>
+        </div>
+        <div class="rate-item">
+            <span class="rate-lang">Bundle (Both Languages)<span class="rate-badge">Recommended</span></span>
+            <span class="rate-price">$0.025<span style="color: #8b949e; font-size: 0.85rem; font-weight: normal;"> / word</span></span>
+        </div>
+    </div>
+
+    <div class="section">
         <h2>Contacts & Blog</h2>
+        
+        <!-- Добавили статус-бейдж активности -->
+        <div class="status-badge">
+            <span class="status-dot"></span>
+            Available for Freelance / Contract
+        </div>
+        
         <p>If you are a developer or want to suggest a project for localization, feel free to reach out:</p>
+        <p>💬 Discord: 
+            <button onclick="copyDiscord()" id="discordBtn" style="background: none; border: none; padding: 0; font-family: inherit; font-size: inherit; font-weight: bold; color: #5865F2; cursor: pointer; text-decoration: underline; transition: color 0.2s;">mdof.twink</button>
+            <span id="copiedText" style="color: #56d364; font-size: 0.85rem; margin-left: 10px; display: none; font-weight: bold; transition: all 0.3s;">Copied!</span>
+        </p>
         <p>📧 Email: <a href="mailto:michaldemidowicz@gmail.com">michaldemidowicz@gmail.com</a></p>
-        <p>🎮 Steam: <a href="#" target="_blank">pending...</a></p>
     </div>
 
     <footer>
         &copy; 2026 mdof. Powered by GitHub Pages.
     </footer>
 </div>
+
+<script>
+function copyDiscord() {
+    navigator.clipboard.writeText("mdof.twink");
+    var btn = document.getElementById("discordBtn");
+    var copied = document.getElementById("copiedText");
+    
+    // Легкая анимация изменения цвета кнопки при клике
+    btn.style.color = "#56d364";
+    copied.style.display = "inline";
+    
+    setTimeout(function() {
+        copied.style.display = "none";
+        btn.style.color = "#5865F2";
+    }, 2000);
+}
+</script>
 
 </body>
 </html>

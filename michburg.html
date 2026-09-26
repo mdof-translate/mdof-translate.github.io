@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Михбург: Рутина и Автоматы</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #050510;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Press Start 2P', monospace;
+            overflow: hidden;
+            color: #fff;
+            touch-action: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            aspect-ratio: 4/3;
+            box-shadow: 0 0 25px rgba(255, 0, 85, 0.4);
+            border: 2px solid #ff0055;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+        }
+
+        .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.25) 50%,
+                rgba(0,0,0,0.25)
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .crt {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+            pointer-events: none;
+            z-index: 11;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 20;
+            padding: 15px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            font-size: 10px;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        .stat-label { color: #88929b; }
+        .stat-value { color: #00ffcc; }
+        
+        #health-bar-container {
+            width: 130px;
+            height: 10px;
+            border: 2px solid #fff;
+            margin-top: 4px;
+        }
+        #health-bar {
+            width: 100%;
+            height: 100%;
+            background-color: #00ffcc;
+            transition: width 0.2s, background-color 0.2s;
+        }
+
+        /* Флаг Михбурга */
+        .michburg-flag {
+            width: 40px;
+            height: 26px;
+            background: #0088ff;
+            border: 1px solid #fff;
+            position: relative;
+            box-shadow: 0 0 10px rgba(0, 136, 255, 0.7);
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        .michburg-flag .star {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #ffea00;
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+        }
+        .star-top    { top: 2px; left: 17px; }
+        .star-left   { top: 9px; left: 4px; }
+        .star-right  { top: 9px; left: 28px; }
+        .star-bottom { bottom: 2px; left: 17px; }
+
+        #philosophy-text {
+            text-align: center;
+            font-size: 9px;
+            line-height: 1.5;
+            color: #ff0055;
+            text-shadow: 1px 1px 0px #000;
+            opacity: 0;
+            transition: opacity 1s;
+            margin-bottom: 10px;
+            background: rgba(0,0,0,0.85);
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ff0055;
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 5, 16, 0.96);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+            pointer-events: auto;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .hidden { display: none !important; }
+
+        h1 {
+            font-size: 13px;
+            color: #ff0055;
+            margin-bottom: 10px;
+            text-shadow: 3px 3px 0px #000, 0 0 10px #ff0055;
+        }
+
+        p {
+            font-size: 7px;
+            line-height: 1.6;
+            color: #ccc;
+            margin-bottom: 14px;
+            max-width: 580px;
+        }
+
+        .top-controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 6px;
+            z-index: 35;
+            pointer-events: auto;
+        }
+        .control-btn {
+            background: #0f1224;
+            border: 2px solid #444;
+            color: #88929b;
+            font-family: 'Press Start 2P', monospace;
+            padding: 6px 10px;
+            font-size: 7px;
+            cursor: pointer;
+        }
+        .control-btn.active {
+            border-color: #00ffcc;
+            color: #00ffcc;
+            background: #151a30;
+        }
+
+        .skins-container {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .skin-card {
+            border: 2px solid #444;
+            padding: 10px;
+            cursor: pointer;
+            background: #0f1224;
+            transition: all 0.2s;
+            width: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .skin-card.selected {
+            border-color: #00ffcc;
+            box-shadow: 0 0 12px rgba(0, 255, 204, 0.4);
+            background: #151a30;
+        }
+
+        /* Детализированные мини-иконки персонажей для выбора скина */
+        .skin-preview {
+            width: 32px;
+            height: 40px;
+            position: relative;
+            margin-bottom: 6px;
+            image-rendering: pixelated;
+        }
+        .skin-head {
+            position: absolute;
+            top: 2px;
+            left: 8px;
+            width: 16px;
+            height: 14px;
+            background: #ffccaa;
+            border-radius: 2px;
+        }
+        .skin-body {
+            position: absolute;
+            top: 16px;
+            left: 4px;
+            width: 24px;
+            height: 16px;
+        }
+        .skin-tie {
+            position: absolute;
+            top: 16px;
+            left: 10px;
+            width: 4px;
+            height: 12px;
+        }
+        .skin-legs {
+            position: absolute;
+            top: 32px;
+            left: 6px;
+            width: 20px;
+            height: 8px;
+        }
+
+        .skin-title {
+            font-size: 6px;
+            margin-top: 4px;
+            color: #fff;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            background: none;
+            border: 2px solid #ff0055;
+            color: #ff0055;
+            font-family: 'Press Start 2P', monospace;
+            padding: 10px 18px;
+            font-size: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+
+        .btn:hover {
+            background: #ff0055;
+            color: #000;
+            box-shadow: 0 0 15px #ff0055;
+        }
+
+        .btn-secondary {
+            border-color: #00ffcc;
+            color: #00ffcc;
+        }
+        .btn-secondary:hover {
+            background: #00ffcc;
+            color: #000;
+            box-shadow: 0 0 15px #00ffcc;
+        }
+
+        .controls-box {
+            background: #0f1224;
+            border: 2px solid #00ffcc;
+            padding: 12px;
+            margin-bottom: 15px;
+            text-align: left;
+            max-width: 500px;
+            font-size: 7px;
+            line-height: 1.8;
+            color: #fff;
+        }
+        .controls-box span { color: #ffea00; }
+
+        #mobile-controls {
+            position: absolute;
+            bottom: 15px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 15px;
+            box-sizing: border-box;
+            z-index: 25;
+            display: none;
+        }
+
+        .mob-group-left, .mob-group-right {
+            display: flex;
+            gap: 10px;
+        }
+
+        .mob-btn {
+            background: rgba(255, 0, 85, 0.2);
+            border: 2px solid rgba(255, 0, 85, 0.6);
+            color: white;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            font-size: 14px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.5);
+        }
+
+        @media (max-width: 768px) {
+            #mobile-controls { display: flex; }
+            h1 { font-size: 10px; }
+            .hud-top { font-size: 8px; }
+        }
+    </style>
+</head>
+<body>
+<div id="game-container">
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div class="scanlines"></div>
+    <div class="crt"></div>
+
+    <div class="top-controls">
+        <button class="control-btn active" id="sound-btn" onclick="toggleSound()">🔊 SOUND</button>
+        <button class="control-btn active" id="music-btn" onclick="toggleMusic()">🎶 OST</button>
+        <button class="control-btn active" id="lang-ru" onclick="setLang('ru')">RU</button>
+        <button class="control-btn" id="lang-en" onclick="setLang('en')">EN</button>
+    </div>
+
+    <div id="ui-layer">
+        <div class="hud-top">
+            <div>
+                <div style="display: flex; align-items: center; margin-bottom: 3px;">
+                    <div class="michburg-flag">
+                        <div class="star star-top"></div>
+                        <div class="star star-left"></div>
+                        <div class="star star-right"></div>
+                        <div class="star star-bottom"></div>
+                    </div>
+                    <span class="stat-label"><span id="lbl-rank-title">ЗВАНИЕ:</span> <span id="rank-name" class="stat-value">Стажер</span></span>
+                </div>
+                <span class="stat-label" id="lbl-meaning">СМЫСЛ:</span>
+                <div id="health-bar-container"><div id="health-bar"></div></div>
+            </div>
+            <div style="text-align: right;">
+                <div><span class="stat-label" id="lbl-kills">КИЛЛЫ: </span><span id="kills-count" class="stat-value">0</span></div>
+                <div style="margin-top: 3px;"><span class="stat-label" id="lbl-docs">ОЧКИ: </span><span id="score" class="stat-value">0</span>/100</div>
+            </div>
+        </div>
+        <div id="philosophy-text"></div>
+    </div>
+
+    <div id="mobile-controls">
+        <div class="mob-group-left">
+            <div class="mob-btn" id="btn-left">←</div>
+            <div class="mob-btn" id="btn-right">→</div>
+        </div>
+        <div class="mob-group-right">
+            <div class="mob-btn" id="btn-dash" style="background: rgba(255,234,0,0.2); border-color:#ffea00;">⚡</div>
+            <div class="mob-btn" id="btn-jump" style="background: rgba(0,255,204,0.2); border-color:#00ffcc;">↑</div>
+            <div class="mob-btn" id="btn-attack" style="background: rgba(255,0,85,0.3); border-color:#ff0055;">🔫</div>
+        </div>
+    </div>
+
+    <div id="start-screen" class="screen">
+        <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+            <div class="michburg-flag" style="width: 44px; height: 30px; margin-right: 10px;">
+                <div class="star star-top" style="transform: scale(1.1);"></div>
+                <div class="star star-left" style="transform: scale(1.1);"></div>
+                <div class="star star-right" style="transform: scale(1.1);"></div>
+                <div class="star star-bottom" style="transform: scale(1.1);"></div>
+            </div>
+            <h1 id="ui-main-title">МИХБУРГ: РУТИНА И АВТОМАТЫ</h1>
+        </div>
+        <p id="ui-subtitle">Защитите офис Михбурга от падающих документов и чертей с помощью Автомата MX!<br>Доберитесь до 100 очков.</p>
+        
+        <div class="btn-group" style="margin-top: 10px;">
+            <button class="btn" id="ui-start-btn">Начать смену</button>
+            <button class="btn btn-secondary" id="ui-controls-btn" onclick="openControlsTab()">Управление</button>
+            <button class="btn btn-secondary" id="ui-skins-btn" onclick="openSkinsTab()">Скины клерка</button>
+        </div>
+    </div>
+
+    <div id="controls-screen" class="screen hidden">
+        <h1 id="ui-controls-title">УПРАВЛЕНИЕ В МИХБУРГЕ</h1>
+        <div class="controls-box">
+            <div><span>← / → (A / D):</span> Ходьба</div>
+            <div><span>↑ (W):</span> Прыжок</div>
+            <div><span>SPACE / X:</span> Стрельба из Автомата MX</div>
+            <div><span>SHIFT / C:</span> Рывок (Уклонение)</div>
+            <div style="margin-top: 6px; color: #00ffcc;">Мобильные кнопки отображаются внизу экрана во время смены.</div>
+        </div>
+        <button class="btn btn-secondary" id="ui-ctrl-back-btn" onclick="closeControlsTab()">Назад</button>
+    </div>
+
+    <div id="skins-screen" class="screen hidden">
+        <h1 id="ui-skins-title">ВЫБОР СКИНА СОТРУДНИКА</h1>
+        <div class="skins-container" style="margin: 20px 0;">
+            <!-- Скин 0: Классик -->
+            <div class="skin-card selected" onclick="selectSkin(0)" id="skin-card-0">
+                <div class="skin-preview">
+                    <div class="skin-head"></div>
+                    <div class="skin-body" style="background: #ffffff;"></div>
+                    <div class="skin-tie" style="background: #0088ff;"></div>
+                    <div class="skin-legs" style="background: #223344;"></div>
+                </div>
+                <div class="skin-title skin-name-0">Классик</div>
+            </div>
+            <!-- Скин 1: Бюрократ -->
+            <div class="skin-card" onclick="selectSkin(1)" id="skin-card-1">
+                <div class="skin-preview">
+                    <div class="skin-head"></div>
+                    <div class="skin-body" style="background: #111111;"></div>
+                    <div class="skin-tie" style="background: #ff0055;"></div>
+                    <div class="skin-legs" style="background: #0d0d0d;"></div>
+                </div>
+                <div class="skin-title skin-name-1">Бюрократ</div>
+            </div>
+            <!-- Скин 2: Кибер -->
+            <div class="skin-card" onclick="selectSkin(2)" id="skin-card-2">
+                <div class="skin-preview">
+                    <div class="skin-head" style="background: #00ffcc;"></div>
+                    <div class="skin-body" style="background: #00ffcc;"></div>
+                    <div class="skin-tie" style="background: #ffea00;"></div>
+                    <div class="skin-legs" style="background: #162238;"></div>
+                </div>
+                <div class="skin-title skin-name-2">Кибер</div>
+            </div>
+            <!-- Скин 3: Ветеран -->
+            <div class="skin-card" onclick="selectSkin(3)" id="skin-card-3">
+                <div class="skin-preview">
+                    <div class="skin-head"></div>
+                    <div class="skin-body" style="background: #4b5320;"></div>
+                    <div class="skin-tie" style="background: #d4af37;"></div>
+                    <div class="skin-legs" style="background: #2f3510;"></div>
+                </div>
+                <div class="skin-title skin-name-3">Ветеран</div>
+            </div>
+        </div>
+        <button class="btn btn-secondary" id="ui-back-btn" onclick="closeSkinsTab()">Назад</button>
+    </div>
+
+    <div id="stage-screen" class="screen hidden">
+        <h1 id="ui-stage-clear-title">ПОВЫШЕНИЕ!</h1>
+        <p id="stage-congrats">Звание успешно обновлено.</p>
+        <button class="btn" id="ui-next-btn">Продолжить смену</button>
+    </div>
+
+    <div id="victory-screen" class="screen hidden">
+        <h1 id="ui-victory-title" style="color: #00ffcc;">ТРИУМФ МИХБУРГА!</h1>
+        <p id="ui-victory-desc">Вы набрали 100 очков, зачистили офис от бюрократии и стали Лордом Михбурга!</p>
+        <p><span id="ui-vic-kills">Уничтожено врагов</span>: <span id="vic-kills-num" style="color:#00ffcc">0</span></p>
+        <button class="btn btn-secondary" id="ui-vic-restart-btn">Вернуться в меню</button>
+    </div>
+
+    <div id="game-over-screen" class="screen hidden">
+        <h1 id="ui-gameover-title">ПОГЛОЩЕН РУТИНОЙ</h1>
+        <p id="final-quote">Черти захватили ваш стол.</p>
+        <p><span id="ui-processed-docs">Очков набрано</span>: <span id="final-score" style="color:#ff0055">0</span> | <span id="ui-final-kills">Киллов</span>: <span id="final-kills" style="color:#00ffcc">0</span></p>
+        <button class="btn" id="ui-restart-btn">Вернуться в офис</button>
+    </div>
+</div>
+
+<script>
+    let soundEnabled = true;
+    let musicEnabled = true;
+    let synth, noiseSynth, scoreSynth, ostSynth, bassSynth;
+    let ostLoop;
+
+    function initAudio() {
+        if (!synth) {
+            synth = new Tone.Synth({
+                oscillator: { type: "square" },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 }
+            }).toDestination();
+
+            noiseSynth = new Tone.NoiseSynth({
+                noise: { type: "white" },
+                envelope: { attack: 0.005, decay: 0.15, sustain: 0, release: 0.1 }
+            }).toDestination();
+
+            scoreSynth = new Tone.Synth({
+                oscillator: { type: "triangle" },
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.2 }
+            }).toDestination();
+
+            ostSynth = new Tone.Synth({
+                oscillator: { type: "sawtooth" },
+                envelope: { attack: 0.02, decay: 0.15, sustain: 0.1, release: 0.2 }
+            }).toDestination();
+            ostSynth.volume.value = -10;
+
+            bassSynth = new Tone.Synth({
+                oscillator: { type: "square" },
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 0.2 }
+            }).toDestination();
+            bassSynth.volume.value = -8;
+
+            const melodyNotes = ["C4", "Eb4", "G4", "Bb4", "C5", "Bb4", "G4", "Eb4", "F4", "Ab4", "C5", "Eb5", "D5", "C5", "Bb4", "G4"];
+            const bassNotes = ["C2", "C2", "G2", "G2", "Ab2", "Ab2", "F2", "G2"];
+
+            let step = 0;
+            ostLoop = new Tone.Loop((time) => {
+                if (!musicEnabled) return;
+                try {
+                    let note = melodyNotes[step % melodyNotes.length];
+                    ostSynth.triggerAttackRelease(note, "16n", time);
+                    if (step % 2 === 0) {
+                        let bass = bassNotes[(step / 2) % bassNotes.length];
+                        bassSynth.triggerAttackRelease(bass, "8n", time);
+                    }
+                    step++;
+                } catch(e) {}
+            }, "8n");
+        }
+    }
+
+    function toggleSound() {
+        soundEnabled = !soundEnabled;
+        const btn = document.getElementById('sound-btn');
+        btn.classList.toggle('active', soundEnabled);
+        btn.innerText = soundEnabled ? '🔊 SOUND' : '🔇 MUTE';
+    }
+
+    function toggleMusic() {
+        musicEnabled = !musicEnabled;
+        const btn = document.getElementById('music-btn');
+        btn.classList.toggle('active', musicEnabled);
+        btn.innerText = musicEnabled ? '🎶 OST' : '🔇 OST';
+        if (!musicEnabled && ostLoop) {
+            Tone.Transport.stop();
+        } else if (musicEnabled && gameState === 'PLAYING') {
+            Tone.Transport.start();
+        }
+    }
+
+    function playSound(type) {
+        if (!soundEnabled) return;
+        try {
+            initAudio();
+            Tone.start();
+            if (type === 'shoot') {
+                synth.triggerAttackRelease("C5", "32n");
+            } else if (type === 'hit') {
+                noiseSynth.triggerAttackRelease("8n");
+            } else if (type === 'score') {
+                scoreSynth.triggerAttackRelease("G4", "16n");
+            } else if (type === 'rankup') {
+                scoreSynth.triggerAttackRelease("C5", "8n");
+                setTimeout(() => scoreSynth.triggerAttackRelease("E5", "8n"), 100);
+                setTimeout(() => scoreSynth.triggerAttackRelease("G5", "4n"), 200);
+            } else if (type === 'dash') {
+                synth.triggerAttackRelease("A3", "16n");
+            }
+        } catch(e) {}
+    }
+
+    function startOST() {
+        initAudio();
+        Tone.start();
+        if (musicEnabled) {
+            Tone.Transport.bpm.value = 125;
+            Tone.Transport.start();
+            ostLoop.start(0);
+        }
+    }
+
+    function stopOST() {
+        try {
+            Tone.Transport.stop();
+            if (ostLoop) ostLoop.stop();
+        } catch(e) {}
+    }
+
+    let currentLang = 'ru';
+
+    const ranks = {
+        ru: ["Стажер", "Менеджер", "Зам. Директора", "Директор", "Лорд Михбурга"],
+        en: ["Intern", "Manager", "Vice Director", "Director", "Lord of Michburg"]
+    };
+
+    const i18n = {
+        ru: {
+            mainTitle: "МИХБУРГ: РУТИНА И АВТОМАТЫ",
+            subtitle: "Защитите офис Михбурга от падающих документов и чертей с помощью Автомата MX!\nДоберитесь до 100 очков.",
+            startBtn: "НАЧАТЬ СМЕНУ",
+            controlsBtn: "Управление",
+            skinsBtn: "Скины клерка",
+            controlsTitle: "УПРАВЛЕНИЕ В МИХБУРГЕ",
+            skinsTitle: "ВЫБОР СКИНА СОТРУДНИКА",
+            backBtn: "Назад",
+            rankLabel: "ЗВАНИЕ:",
+            meaning: "СМЫСЛ:",
+            killsLabel: "КИЛЛЫ:",
+            docsLabel: "ОЧКИ:",
+            stageClearTitle: "ПОВЫШЕНИЕ ЗВАНИЯ!",
+            stageCongrats: (r) => `Поздравляем! Вы получили новое звание: "${r}". Система Михбурга гордится вами.`,
+            nextBtn: "ПРОДОЛЖИТЬ СМЕНУ",
+            victoryTitle: "ТРИУМФ МИХБУРГА!",
+            victoryDesc: "Вы набрали 100 очков, подавили всю бюрократию и вошли в историю как Лорд Михбурга!",
+            vicKills: "Уничтожено врагов/целей",
+            vicRestart: "ВЕРНУТЬСЯ В МЕНЮ",
+            gameOverTitle: "ПОГЛОЩЕН РУТИНОЙ",
+            processedDocs: "Очков набрано",
+            finalKills: "Киллов",
+            restartBtn: "ВЕРНУТЬСЯ В ОФИС",
+            skins: ["Классик", "Бюрократ", "Кибер", "Ветеран"],
+            quotes: [
+                "Флаг Михбурга с четырьмя золотыми звездами сияет над вашим монитором.",
+                "Автомат MX — единственный законный способ вести диалог с дедлайнами.",
+                "Документы падают строго вниз. Порядок в каждом пикселе.",
+                "Достигните 100 очков, чтобы доказать бессмысленность офисного хаоса."
+            ],
+            quotesGameOver: [
+                "Черти быстро расправились с вашими отчетами.",
+                "Вы долго держали оборону офиса, но рутина оказалась сильнее.",
+                "Легендарный защитник Михбурга с Автоматом MX!"
+            ]
+        },
+        en: {
+            mainTitle: "MICHBURG: ROUTINE & RIFLES",
+            subtitle: "Protect Michburg's office from falling documents & devils with the MX Rifle!\nReach 100 points.",
+            startBtn: "START SHIFT",
+            controlsBtn: "Controls",
+            skinsBtn: "Employee Skins",
+            controlsTitle: "MICHBURG CONTROLS",
+            skinsTitle: "EMPLOYEE SKIN SELECTION",
+            backBtn: "Back",
+            rankLabel: "RANK:",
+            meaning: "MEANING:",
+            killsLabel: "KILLS:",
+            docsLabel: "SCORE:",
+            stageClearTitle: "RANK UP!",
+            stageCongrats: (r) => `Congratulations! You attained the rank: "${r}". Michburg's system is pleased.`,
+            nextBtn: "CONTINUE SHIFT",
+            victoryTitle: "MICHBURG TRIUMPH!",
+            victoryDesc: "You reached 100 points, suppressed all bureaucracy, and became the Lord of Michburg!",
+            vicKills: "Enemies/Targets destroyed",
+            vicRestart: "RETURN TO MENU",
+            gameOverTitle: "CONSUMED BY ROUTINE",
+            processedDocs: "Score gained",
+            finalKills: "Kills",
+            restartBtn: "RETURN TO OFFICE",
+            skins: ["Classic", "Bureaucrat", "Cyber", "Veteran"],
+            quotes: [
+                "The Michburg flag with four golden stars shines proudly over your monitor.",
+                "The MX Rifle is the only legal argument against tough deadlines.",
+                "Documents fall strictly straight down. Order in every pixel.",
+                "Reach 100 points to conquer the office cycle."
+            ],
+            quotesGameOver: [
+                "Devils quickly overwhelmed your workspace.",
+                "You held the office defense long, but routine conquered you.",
+                "Legendary defender of Michburg with the MX Rifle!"
+            ]
+        }
+    };
+
+    function setLang(lang) {
+        currentLang = lang;
+        document.getElementById('lang-ru').classList.toggle('active', lang === 'ru');
+        document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+        
+        const t = i18n[lang];
+        document.getElementById('ui-main-title').innerText = t.mainTitle;
+        document.getElementById('ui-subtitle').innerText = t.subtitle;
+        document.getElementById('ui-start-btn').innerText = t.startBtn;
+        document.getElementById('ui-controls-btn').innerText = t.controlsBtn;
+        document.getElementById('ui-skins-btn').innerText = t.skinsBtn;
+        document.getElementById('ui-controls-title').innerText = t.controlsTitle;
+        document.getElementById('ui-skins-title').innerText = t.skinsTitle;
+        document.getElementById('ui-back-btn').innerText = t.backBtn;
+        document.getElementById('ui-ctrl-back-btn').innerText = t.backBtn;
+        document.getElementById('lbl-rank-title').innerText = t.rankLabel;
+        document.getElementById('lbl-meaning').innerText = t.meaning;
+        document.getElementById('lbl-kills').innerText = t.killsLabel;
+        document.getElementById('lbl-docs').innerText = t.docsLabel;
+        document.getElementById('ui-stage-clear-title').innerText = t.stageClearTitle;
+        document.getElementById('ui-next-btn').innerText = t.nextBtn;
+        document.getElementById('ui-victory-title').innerText = t.victoryTitle;
+        document.getElementById('ui-victory-desc').innerText = t.victoryDesc;
+        document.getElementById('ui-vic-kills').innerText = t.vicKills;
+        document.getElementById('ui-vic-restart-btn').innerText = t.vicRestart;
+        document.getElementById('ui-gameover-title').innerText = t.gameOverTitle;
+        document.getElementById('ui-processed-docs').innerText = t.processedDocs;
+        document.getElementById('ui-final-kills').innerText = t.finalKills;
+        document.getElementById('ui-restart-btn').innerText = t.restartBtn;
+
+        for(let i=0; i<4; i++) {
+            document.querySelector(`.skin-name-${i}`).innerText = t.skins[i];
+        }
+        updateRankDisplay();
+    }
+
+    function openControlsTab() {
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('controls-screen').classList.remove('hidden');
+    }
+
+    function closeControlsTab() {
+        document.getElementById('controls-screen').classList.add('hidden');
+        document.getElementById('start-screen').classList.remove('hidden');
+    }
+
+    function openSkinsTab() {
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('skins-screen').classList.remove('hidden');
+    }
+
+    function closeSkinsTab() {
+        document.getElementById('skins-screen').classList.add('hidden');
+        document.getElementById('start-screen').classList.remove('hidden');
+    }
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    const scoreEl = document.getElementById('score');
+    const killsCountEl = document.getElementById('kills-count');
+    const rankNameEl = document.getElementById('rank-name');
+    const healthBar = document.getElementById('health-bar');
+    const philosophyText = document.getElementById('philosophy-text');
+    
+    const startScreen = document.getElementById('start-screen');
+    const stageScreen = document.getElementById('stage-screen');
+    const victoryScreen = document.getElementById('victory-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    
+    const finalScoreEl = document.getElementById('final-score');
+    const finalKillsEl = document.getElementById('final-kills');
+    const vicKillsNumEl = document.getElementById('vic-kills-num');
+    const finalQuoteEl = document.getElementById('final-quote');
+    const stageCongratsEl = document.getElementById('stage-congrats');
+    
+    document.getElementById('ui-start-btn').addEventListener('click', startGame);
+    document.getElementById('ui-next-btn').addEventListener('click', resumeGame);
+    document.getElementById('ui-restart-btn').addEventListener('click', () => {
+        gameOverScreen.classList.add('hidden');
+        startScreen.classList.remove('hidden');
+    });
+    document.getElementById('ui-vic-restart-btn').addEventListener('click', () => {
+        victoryScreen.classList.add('hidden');
+        startScreen.classList.remove('hidden');
+    });
+
+    let currentSkin = 0;
+    function selectSkin(index) {
+        currentSkin = index;
+        document.querySelectorAll('.skin-card').forEach((card, idx) => {
+            if (idx === index) card.classList.add('selected');
+            else card.classList.remove('selected');
+        });
+    }
+
+    let leftPressed = false;
+    let rightPressed = false;
+    let jumpPressed = false;
+    
+    const btnLeft = document.getElementById('btn-left');
+    const btnRight = document.getElementById('btn-right');
+    const btnJump = document.getElementById('btn-jump');
+    const btnAttack = document.getElementById('btn-attack');
+    const btnDash = document.getElementById('btn-dash');
+
+    const addTouch = (elem, setter) => {
+        elem.addEventListener('touchstart', (e) => { e.preventDefault(); setter(true); });
+        elem.addEventListener('touchend', (e) => { e.preventDefault(); setter(false); });
+    };
+    addTouch(btnLeft, (v) => leftPressed = v);
+    addTouch(btnRight, (v) => rightPressed = v);
+    addTouch(btnJump, (v) => jumpPressed = v);
+    addTouch(btnDash, (v) => { if(v) triggerDash(); });
+    addTouch(btnAttack, (v) => { if(v) triggerShoot(); });
+
+    window.addEventListener('keydown', (e) => {
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') leftPressed = true;
+        if (e.code === 'ArrowRight' || e.code === 'KeyD') rightPressed = true;
+        if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+            if (!jumpPressed) triggerJump();
+            jumpPressed = true;
+            e.preventDefault();
+        }
+        if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyC') {
+            triggerDash();
+            e.preventDefault();
+        }
+        if (e.code === 'Space' || e.code === 'KeyF' || e.code === 'KeyJ' || e.code === 'KeyX') {
+            triggerShoot();
+            e.preventDefault();
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') leftPressed = false;
+        if (e.code === 'ArrowRight' || e.code === 'KeyD') rightPressed = false;
+        if (e.code === 'ArrowUp' || e.code === 'KeyW') jumpPressed = false;
+    });
+
+    function triggerJump() {
+        if (player && player.grounded) {
+            player.vy = player.jumpForce;
+            player.grounded = false;
+        }
+    }
+
+    function triggerDash() {
+        if (player && player.dashCooldown <= 0) {
+            player.isDashing = true;
+            player.dashTimer = 12;
+            player.dashCooldown = 45;
+            playSound('dash');
+        }
+    }
+
+    function triggerShoot() {
+        if (player) {
+            player.isShooting = true;
+            player.shootTimer = 10;
+            playSound('shoot');
+            bullets.push(new Bullet(
+                player.facingRight ? player.x + player.width : player.x - 12,
+                player.y + 20,
+                player.facingRight ? 12 : -12
+            ));
+        }
+    }
+
+    let gameLoopId;
+    let frameCount = 0;
+    let gameState = 'START';
+    let score = 0;
+    let kills = 0;
+    let currentRankIndex = 0;
+    let meaning = 100;
+    let levelSpeed = 1;
+
+    let player;
+    let documents = [];
+    let devils = [];
+    let vodkas = [];
+    let bullets = [];
+    let particles = [];
+    let buildings = [];
+    let metroEntrances = [];
+
+    const COLORS = {
+        bg: '#0c0c16',
+        buildingLight: '#1f2430',
+        buildingDark: '#10131a',
+        windowOn: '#ffea88',
+        windowOff: '#121622',
+        docGood: '#00ffcc',
+        docBad: '#ff0055'
+    };
+
+    // СИЛЬНО ДЕТАЛИЗИРОВАННЫЕ ЗДАНИЯ С АРХИТЕКТУРНЫМИ ЭЛЕМЕНТАМИ И КРЫШНЫМИ НАДСТРОЙКАМИ
+    class Building {
+        constructor(x, y, width, height, speed, type) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+            this.speed = speed;
+            this.type = type; // 'standard', 'mid', 'bigben', 'parliament', 'skyscraper'
+            this.windows = [];
+            this.hasRooftopAC = Math.random() > 0.4;
+            this.hasAntenna = Math.random() > 0.5;
+            this.hasNeonSign = Math.random() > 0.6;
+            
+            let cols = Math.floor(this.width / 18);
+            let rows = Math.floor(this.height / 24);
+            for(let i=0; i<cols; i++) {
+                for(let j=0; j<rows; j++) {
+                    this.windows.push({
+                        x: 4 + i * 18,
+                        y: 12 + j * 24,
+                        on: Math.random() > 0.55,
+                        blinds: Math.random() > 0.8
+                    });
+                }
+            }
+        }
+        update() {
+            this.x -= this.speed * levelSpeed * 0.8;
+            if (this.x + this.width < 0) {
+                this.x = canvas.width + Math.random() * 150;
+                this.windows.forEach(w => w.on = Math.random() > 0.55);
+            }
+        }
+        draw(ctx) {
+            ctx.save();
+            if (this.type === 'mid') {
+                // Здание МИД со шпилем
+                ctx.fillStyle = '#1e2433';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                // Архитектурные уступы
+                ctx.fillStyle = '#262f45';
+                ctx.fillRect(this.x + 15, this.y - 45, this.width - 30, 45);
+                ctx.fillStyle = '#181e2b';
+                ctx.fillRect(this.x + 30, this.y - 75, this.width - 60, 30);
+                // Шпиль со звездой
+                ctx.fillStyle = '#ffea00';
+                ctx.fillRect(this.x + this.width / 2 - 2, this.y - 110, 4, 35);
+                ctx.beginPath();
+                ctx.arc(this.x + this.width / 2, this.y - 112, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+            } else if (this.type === 'bigben') {
+                // Готическая часовая башня
+                ctx.fillStyle = '#2c221e';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                // Шпиль крыши
+                ctx.fillStyle = '#4a3832';
+                ctx.beginPath();
+                ctx.moveTo(this.x - 8, this.y);
+                ctx.lineTo(this.x + this.width / 2, this.y - 65);
+                ctx.lineTo(this.x + this.width + 8, this.y);
+                ctx.closePath();
+                ctx.fill();
+                // Часы
+                ctx.fillStyle = '#ffea00';
+                ctx.beginPath();
+                ctx.arc(this.x + this.width / 2, this.y + 45, 14, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+            } else if (this.type === 'parliament') {
+                // Парламент с колоннами
+                ctx.fillStyle = '#222838';
+                ctx.fillRect(this.x, this.y + 30, this.width, this.height - 30);
+                ctx.fillStyle = '#2d374d';
+                ctx.fillRect(this.x + this.width / 2 - 40, this.y, 80, this.height);
+                // Колонны
+                ctx.fillStyle = '#d0d0c0';
+                for(let i=0; i<5; i++) {
+                    ctx.fillRect(this.x + this.width / 2 - 30 + i * 14, this.y + 15, 6, this.height - 15);
+                }
+
+            } else {
+                // Детализированный офисный небоскреб
+                ctx.fillStyle = (Math.floor(this.x) % 2 === 0) ? COLORS.buildingDark : COLORS.buildingLight;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+
+                // Архитектурные карнизы / разделители этажей
+                ctx.fillStyle = '#141926';
+                for (let cy = this.y + 24; cy < this.y + this.height; cy += 48) {
+                    ctx.fillRect(this.x, cy, this.width, 3);
+                }
+
+                // Окна с жалюзи и светом
+                this.windows.forEach(w => {
+                    ctx.fillStyle = w.on ? COLORS.windowOn : COLORS.windowOff;
+                    ctx.fillRect(this.x + w.x, this.y + w.y, 10, 14);
+                    if (w.blinds && w.on) {
+                        ctx.fillStyle = '#bfa145';
+                        ctx.fillRect(this.x + w.x, this.y + w.y + 6, 10, 3);
+                    }
+                });
+
+                // Крышные детали (кондиционеры, баки, антенны)
+                if (this.hasRooftopAC) {
+                    ctx.fillStyle = '#333b4f';
+                    ctx.fillRect(this.x + 10, this.y - 12, 16, 12);
+                    ctx.fillStyle = '#4f5d75';
+                    ctx.fillRect(this.x + 32, this.y - 18, 22, 18);
+                }
+                if (this.hasAntenna) {
+                    ctx.fillStyle = '#778899';
+                    ctx.fillRect(this.x + this.width - 15, this.y - 35, 2, 35);
+                    ctx.fillStyle = '#ff0055'; // Сигнальный огонек на антенне
+                    ctx.fillRect(this.x + this.width - 17, this.y - 38, 6, 4);
+                }
+                if (this.hasNeonSign && this.width > 70) {
+                    ctx.fillStyle = '#ff0055';
+                    ctx.fillRect(this.x + 12, this.y + 10, this.width - 24, 6);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '5px "Press Start 2P"';
+                    ctx.fillText('MX CORP', this.x + 16, this.y + 15);
+                }
+            }
+            ctx.restore();
+        }
+    }
+
+    // РЕДКИЕ СПУСКИ В МЕТРО НА ФОНЕ
+    class MetroEntrance {
+        constructor(x) {
+            this.x = x;
+            this.y = canvas.height - 85;
+            this.width = 54;
+            this.height = 25;
+            this.speed = 0.6;
+        }
+        update() {
+            this.x -= this.speed * levelSpeed * 0.8;
+            if (this.x + this.width < 0) {
+                this.x = canvas.width + 400 + Math.random() * 500; // Появляются редко
+            }
+        }
+        draw(ctx) {
+            ctx.save();
+            // Спуск в подземку
+            ctx.fillStyle = '#11131a';
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+            // Ступени
+            ctx.fillStyle = '#222838';
+            for(let i=0; i<4; i++) {
+                ctx.fillRect(this.x + 4, this.y + 6 + i * 5, this.width - 8, 2);
+            }
+            // Знак метро «М»
+            ctx.fillStyle = '#556677';
+            ctx.fillRect(this.x + this.width/2 - 2, this.y - 20, 4, 20);
+            ctx.fillStyle = '#0088ff';
+            ctx.fillRect(this.x + this.width/2 - 12, this.y - 32, 24, 14);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '9px "Press Start 2P"';
+            ctx.fillText('M', this.x + this.width/2 - 4, this.y - 21);
+            ctx.restore();
+        }
+    }
+
+    class Player {
+        constructor(skin) {
+            this.width = 32;
+            this.height = 48;
+            this.x = 100;
+            this.y = canvas.height - 108;
+            this.speed = 5;
+            this.vy = 0;
+            this.gravity = 0.6;
+            this.jumpForce = -11;
+            this.grounded = true;
+            this.isHit = false;
+            this.hitTimer = 0;
+            this.isShooting = false;
+            this.shootTimer = 0;
+            this.isDashing = false;
+            this.dashTimer = 0;
+            this.dashCooldown = 0;
+            this.facingRight = true;
+            this.skin = skin;
+        }
+        update() {
+            if (this.dashCooldown > 0) this.dashCooldown--;
+
+            if (this.isDashing) {
+                this.x += this.facingRight ? 14 : -14;
+                this.dashTimer--;
+                if (this.dashTimer <= 0) this.isDashing = false;
+            } else {
+                if (leftPressed) {
+                    this.x -= this.speed;
+                    this.facingRight = false;
+                }
+                if (rightPressed) {
+                    this.x += this.speed;
+                    this.facingRight = true;
+                }
+            }
+
+            if (this.x < 0) this.x = 0;
+            if (this.x > canvas.width - this.width) this.x = canvas.width - this.width;
+
+            if (!this.isDashing) {
+                this.vy += this.gravity;
+                this.y += this.vy;
+            }
+
+            let floorY = canvas.height - 108;
+            if (this.y >= floorY) {
+                this.y = floorY;
+                this.vy = 0;
+                this.grounded = true;
+            }
+
+            if (this.isHit) {
+                this.hitTimer--;
+                if (this.hitTimer <= 0) this.isHit = false;
+            }
+
+            if (this.isShooting) {
+                this.shootTimer--;
+                if (this.shootTimer <= 0) this.isShooting = false;
+            }
+        }
+        draw(ctx) {
+            ctx.save();
+            if (this.isHit && Math.floor(Date.now() / 50) % 2 === 0) {
+                ctx.globalAlpha = 0.5;
+            }
+            if (this.isDashing) {
+                ctx.globalAlpha = 0.7;
+                ctx.fillStyle = '#ffea00';
+                ctx.fillRect(this.x - (this.facingRight ? 8 : -8), this.y, this.width, this.height);
+            }
+
+            let shirtColor = '#ffffff';
+            let tieColor = '#0088ff';
+            let pantsColor = '#223344';
+
+            if (this.skin === 1) {
+                shirtColor = '#1a1a1a';
+                tieColor = '#ff0055';
+                pantsColor = '#0d0d0d';
+            } else if (this.skin === 2) {
+                shirtColor = '#00ffcc';
+                tieColor = '#ffea00';
+                pantsColor = '#162238';
+            } else if (this.skin === 3) {
+                shirtColor = '#4b5320';
+                tieColor = '#d4af37';
+                pantsColor = '#2f3510';
+            }
+
+            ctx.fillStyle = shirtColor;
+            ctx.fillRect(this.x, this.y + 16, this.width, 20);
+            
+            ctx.fillStyle = '#ffccaa';
+            ctx.fillRect(this.x + 8, this.y, 16, 16);
+            
+            if (this.skin === 2) {
+                ctx.fillStyle = '#ff0055';
+                ctx.fillRect(this.x + 8, this.y + 4, 16, 4);
+            }
+
+            ctx.fillStyle = tieColor;
+            ctx.fillRect(this.x + 14, this.y + 16, 4, 14);
+
+            ctx.fillStyle = pantsColor;
+            ctx.fillRect(this.x, this.y + 36, this.width, 12);
+
+            ctx.fillStyle = '#333';
+            let gunX = this.facingRight ? this.x + 22 : this.x - 10;
+            ctx.fillRect(gunX, this.y + 22, 18, 6);
+            ctx.fillStyle = '#ffea00';
+            if (this.isShooting) {
+                ctx.fillRect(this.facingRight ? gunX + 18 : gunX - 6, this.y + 21, 8, 8);
+            }
+
+            ctx.restore();
+        }
+    }
+
+    class Bullet {
+        constructor(x, y, vx) {
+            this.x = x;
+            this.y = y;
+            this.vx = vx;
+            this.width = 8;
+            this.height = 4;
+            this.markedForDeletion = false;
+        }
+        update() {
+            this.x += this.vx;
+            if (this.x < 0 || this.x > canvas.width) {
+                this.markedForDeletion = true;
+            }
+        }
+        draw(ctx) {
+            ctx.fillStyle = '#ffea00';
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+    }
+
+    class DocumentEntity {
+        constructor() {
+            this.width = 22;
+            this.height = 28;
+            this.x = 50 + Math.random() * (canvas.width - 100);
+            this.y = -50;
+            this.type = Math.random() > 0.35 ? 'good' : 'bad';
+            this.speed = (2.2 + Math.random() * 1.8) * levelSpeed;
+            this.markedForDeletion = false;
+        }
+        update() {
+            this.y += this.speed;
+            if (this.y > canvas.height - 65) {
+                this.markedForDeletion = true;
+                if (this.type === 'good') takeDamage(6);
+            }
+        }
+        draw(ctx) {
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+            
+            ctx.fillStyle = this.type === 'good' ? COLORS.docGood : COLORS.docBad;
+            ctx.fillRect(this.x + 4, this.y + 5, 14, 5);
+            ctx.fillRect(this.x + 4, this.y + 14, 10, 4);
+        }
+    }
+
+    class VodkaItem {
+        constructor() {
+            this.width = 18;
+            this.height = 26;
+            this.x = 50 + Math.random() * (canvas.width - 100);
+            this.y = -50;
+            this.speed = 2.4 * levelSpeed;
+            this.markedForDeletion = false;
+        }
+        update() {
+            this.y += this.speed;
+            if (this.y > canvas.height - 65) {
+                this.markedForDeletion = true;
+            }
+        }
+        draw(ctx) {
+            ctx.fillStyle = '#88aacc';
+            ctx.fillRect(this.x + 4, this.y, 10, 6);
+            ctx.fillStyle = '#ddeeff';
+            ctx.fillRect(this.x, this.y + 6, this.width, 20);
+            
+            ctx.fillStyle = '#ff0055';
+            ctx.fillRect(this.x + 2, this.y + 11, 14, 8);
+            ctx.fillStyle = '#fff';
+            ctx.font = '6px "Press Start 2P"';
+            ctx.fillText('MX', this.x + 3, this.y + 17);
+        }
+    }
+
+    class Devil {
+        constructor() {
+            this.width = 38;
+            this.height = 54;
+            this.direction = Math.random() > 0.5 ? 1 : -1;
+            this.x = this.direction === 1 ? -80 : canvas.width + 80;
+            this.y = canvas.height - 114;
+            this.speed = (2.0 + Math.random() * 1.5) * levelSpeed;
+            this.health = 3;
+            this.markedForDeletion = false;
+        }
+        update() {
+            this.x += this.speed * this.direction;
+            if ((this.direction === 1 && this.x > canvas.width + 100) || 
+                (this.direction === -1 && this.x < -100)) {
+                this.markedForDeletion = true;
+            }
+        }
+        draw(ctx) {
+            ctx.save();
+            ctx.fillStyle = '#2b0933';
+            ctx.fillRect(this.x, this.y + 16, this.width, 38);
+            
+            ctx.fillStyle = '#ff0055';
+            ctx.fillRect(this.x + 6, this.y, 26, 18);
+
+            ctx.fillStyle = '#ffea00';
+            ctx.beginPath();
+            ctx.moveTo(this.x + 8, this.y + 2);
+            ctx.lineTo(this.x, this.y - 6);
+            ctx.lineTo(this.x + 12, this.y + 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(this.x + 30, this.y + 2);
+            ctx.lineTo(this.x + 38, this.y - 6);
+            ctx.lineTo(this.x + 26, this.y + 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffff00';
+            ctx.fillRect(this.x + 9, this.y + 6, 5, 5);
+            ctx.fillRect(this.x + 24, this.y + 6, 5, 5);
+
+            ctx.restore();
+        }
+    }
+
+    class Particle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.size = Math.random() * 4 + 2;
+            this.speedX = (Math.random() - 0.5) * 8;
+            this.speedY = (Math.random() - 0.5) * 8;
+            this.life = 1;
+            this.decay = Math.random() * 0.04 + 0.02;
+        }
+        update() {
+            this.x += this.speedX;
+            this.y += this.speedY;
+            this.life -= this.decay;
+        }
+        draw(ctx) {
+            ctx.globalAlpha = Math.max(0, this.life);
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y, this.size, this.size);
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    function takeDamage(amount) {
+        if (player.isHit || player.isDashing) return;
+        
+        meaning -= amount;
+        player.isHit = true;
+        player.hitTimer = 35;
+        
+        playSound('hit');
+        createParticles(player.x + player.width/2, player.y + player.height/2, '#ff0055', 15);
+        updateHUD();
+        
+        canvas.style.transform = `translate(${(Math.random()-0.5)*8}px, ${(Math.random()-0.5)*8}px)`;
+        setTimeout(() => canvas.style.transform = 'translate(0, 0)', 50);
+
+        if (meaning <= 0) {
+            endGame();
+        }
+    }
+
+    function healPlayer(amount) {
+        meaning = Math.min(100, meaning + amount);
+        updateHUD();
+        createParticles(player.x + player.width/2, player.y, '#00ffcc', 20);
+    }
+
+    function addScore(points = 1, isKill = false) {
+        score += points;
+        if (isKill) {
+            kills++;
+            playSound('hit');
+        } else {
+            playSound('score');
+        }
+        updateHUD();
+        
+        if (score % 7 === 0) {
+            showPhilosophy();
+        }
+
+        let expectedRank = Math.min(4, Math.floor(score / 20));
+        if (expectedRank > currentRankIndex && expectedRank <= 4) {
+            currentRankIndex = expectedRank;
+            playSound('rankup');
+            triggerRankUp();
+        }
+
+        if (score >= 100) {
+            winGame();
+        }
+    }
+
+    function updateRankDisplay() {
+        const rankList = ranks[currentLang];
+        rankNameEl.innerText = rankList[currentRankIndex];
+    }
+
+    function updateHUD() {
+        scoreEl.innerText = score;
+        killsCountEl.innerText = kills;
+        updateRankDisplay();
+        healthBar.style.width = Math.max(0, meaning) + '%';
+        
+        if (meaning > 50) healthBar.style.backgroundColor = '#00ffcc';
+        else if (meaning > 25) healthBar.style.backgroundColor = '#ffcc00';
+        else healthBar.style.backgroundColor = '#ff0055';
+    }
+
+    function showPhilosophy() {
+        const quotesList = i18n[currentLang].quotes;
+        const quote = quotesList[Math.floor(Math.random() * quotesList.length)];
+        philosophyText.innerText = quote;
+        philosophyText.style.opacity = 1;
+        
+        setTimeout(() => {
+            philosophyText.style.opacity = 0;
+        }, 4000);
+    }
+
+    function createParticles(x, y, color, count) {
+        for(let i = 0; i < count; i++) {
+            particles.push(new Particle(x, y, color));
+        }
+    }
+
+    function checkCollision(rect1, rect2) {
+        return (rect1.x < rect2.x + rect2.width &&
+                rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height &&
+                rect1.y + rect1.height > rect2.y);
+    }
+
+    function initBackground() {
+        buildings = [];
+        metroEntrances = [];
+
+        // Достопримечательности на заднем плане
+        buildings.push(new Building(30, canvas.height - 450, 110, 450, 0.3, 'mid'));
+        buildings.push(new Building(250, canvas.height - 380, 80, 380, 0.4, 'bigben'));
+        buildings.push(new Building(420, canvas.height - 340, 150, 340, 0.35, 'parliament'));
+        
+        for(let i=0; i<5; i++) {
+            buildings.push(new Building(600 + i * 135, canvas.height - 320 + Math.random()*50, 105, 320, 0.6, 'standard'));
+        }
+
+        // Добавляем редкие входы в метро на заднем плане
+        metroEntrances.push(new MetroEntrance(350));
+        metroEntrances.push(new MetroEntrance(850));
+    }
+
+    function drawFloor() {
+        ctx.fillStyle = '#16192b';
+        ctx.fillRect(0, canvas.height - 60, canvas.width, 60);
+        
+        ctx.fillStyle = '#0088ff';
+        ctx.fillRect(0, canvas.height - 68, canvas.width, 8);
+
+        ctx.fillStyle = '#ffea00';
+        for(let i = 40; i < canvas.width; i += 160) {
+            ctx.fillRect(i, canvas.height - 66, 4, 4);
+        }
+    }
+
+    function startGame() {
+        startScreen.classList.add('hidden');
+        controlsScreen.classList.add('hidden');
+        skinsScreen.classList.add('hidden');
+        gameOverScreen.classList.add('hidden');
+        stageScreen.classList.add('hidden');
+        victoryScreen.classList.add('hidden');
+        
+        score = 0;
+        kills = 0;
+        currentRankIndex = 0;
+        meaning = 100;
+        levelSpeed = 1;
+        frameCount = 0;
+        
+        player = new Player(currentSkin);
+        documents = [];
+        devils = [];
+        vodkas = [];
+        bullets = [];
+        particles = [];
+        
+        initBackground();
+        updateHUD();
+        
+        gameState = 'PLAYING';
+        philosophyText.style.opacity = 0;
+        
+        startOST();
+
+        if (gameLoopId) cancelAnimationFrame(gameLoopId);
+        gameLoop();
+    }
+
+    function triggerRankUp() {
+        gameState = 'RANK_UP';
+        stageScreen.classList.remove('hidden');
+        const rankList = ranks[currentLang];
+        stageCongratsEl.innerText = i18n[currentLang].stageCongrats(rankList[currentRankIndex]);
+        levelSpeed += 0.2;
+        meaning = Math.min(100, meaning + 25);
+    }
+
+    function resumeGame() {
+        stageScreen.classList.add('hidden');
+        gameState = 'PLAYING';
+        updateHUD();
+        gameLoop();
+    }
+
+    function winGame() {
+        gameState = 'VICTORY';
+        stopOST();
+        victoryScreen.classList.remove('hidden');
+        vicKillsNumEl.innerText = kills;
+    }
+
+    function endGame() {
+        gameState = 'GAMEOVER';
+        stopOST();
+        gameOverScreen.classList.add('hidden');
+        gameOverScreen.classList.remove('hidden');
+        finalScoreEl.innerText = score;
+        finalKillsEl.innerText = kills;
+        
+        const qList = i18n[currentLang].quotesGameOver;
+        if (score < 15) finalQuoteEl.innerText = qList[0];
+        else if (score < 60) finalQuoteEl.innerText = qList[1];
+        else finalQuoteEl.innerText = qList[2];
+    }
+
+    const controlsScreen = document.getElementById('controls-screen');
+    const skinsScreen = document.getElementById('skins-screen');
+
+    function gameLoop() {
+        if (gameState !== 'PLAYING') return;
+
+        ctx.fillStyle = COLORS.bg;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        frameCount++;
+
+        // Отрисовка зданий
+        buildings.forEach(b => {
+            b.update();
+            b.draw(ctx);
+        });
+
+        // Отрисовка редких спусков в метро
+        metroEntrances.forEach(m => {
+            m.update();
+            m.draw(ctx);
+        });
+
+        drawFloor();
+
+        let docSpawnRate = Math.max(22, 50 - levelSpeed * 6);
+        if (frameCount % Math.floor(docSpawnRate) === 0) {
+            documents.push(new DocumentEntity());
+        }
+
+        if (frameCount % 300 === 0) {
+            vodkas.push(new VodkaItem());
+        }
+
+        let devilSpawnRate = Math.max(120, 240 - levelSpeed * 15);
+        if (frameCount % Math.floor(devilSpawnRate) === 0 && Math.random() > 0.25) {
+            devils.push(new Devil());
+        }
+
+        player.update();
+        player.draw(ctx);
+
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            let b = bullets[i];
+            b.update();
+            b.draw(ctx);
+
+            let bulletHit = false;
+
+            for (let j = documents.length - 1; j >= 0; j--) {
+                let doc = documents[j];
+                if (checkCollision(b, doc)) {
+                    doc.markedForDeletion = true;
+                    bulletHit = true;
+                    createParticles(doc.x, doc.y, COLORS.docGood, 10);
+                    addScore(1, true);
+                    break;
+                }
+            }
+
+            if (!bulletHit) {
+                for (let j = devils.length - 1; j >= 0; j--) {
+                    let devil = devils[j];
+                    if (checkCollision(b, devil)) {
+                        devil.health--;
+                        bulletHit = true;
+                        createParticles(devil.x, devil.y, '#ff0055', 8);
+                        if (devil.health <= 0) {
+                            devil.markedForDeletion = true;
+                            addScore(2, true);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (bulletHit || b.markedForDeletion) {
+                bullets.splice(i, 1);
+            }
+        }
+
+        for (let i = documents.length - 1; i >= 0; i--) {
+            let doc = documents[i];
+            doc.update();
+            doc.draw(ctx);
+
+            if (checkCollision(player, doc)) {
+                if (doc.type === 'good') {
+                    addScore(1, false);
+                    createParticles(doc.x, doc.y, COLORS.docGood, 12);
+                } else {
+                    takeDamage(18);
+                    createParticles(doc.x, doc.y, COLORS.docBad, 15);
+                }
+                doc.markedForDeletion = true;
+            }
+
+            if (doc.markedForDeletion) {
+                documents.splice(i, 1);
+            }
+        }
+
+        for (let i = vodkas.length - 1; i >= 0; i--) {
+            let v = vodkas[i];
+            v.update();
+            v.draw(ctx);
+
+            if (checkCollision(player, v)) {
+                healPlayer(25);
+                v.markedForDeletion = true;
+            }
+
+            if (v.markedForDeletion) {
+                vodkas.splice(i, 1);
+            }
+        }
+
+        for (let i = devils.length - 1; i >= 0; i--) {
+            let devil = devils[i];
+            devil.update();
+            devil.draw(ctx);
+
+            if (checkCollision(player, devil)) {
+                takeDamage(30);
+                devil.markedForDeletion = true;
+                createParticles(devil.x, devil.y, '#ff0055', 20);
+            }
+
+            if (devil.markedForDeletion) {
+                devils.splice(i, 1);
+            }
+        }
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.update();
+            p.draw(ctx);
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+
+        if (gameState === 'PLAYING') {
+            gameLoopId = requestAnimationFrame(gameLoop);
+        }
+    }
+
+    window.onload = () => {
+        initBackground();
+        ctx.fillStyle = COLORS.bg;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        buildings.forEach(b => b.draw(ctx));
+        metroEntrances.forEach(m => m.draw(ctx));
+        drawFloor();
+        updateRankDisplay();
+    };
+</script>
+</body>
+</html>

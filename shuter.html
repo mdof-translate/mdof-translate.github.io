@@ -1,0 +1,493 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>CYBER-BLAST // NEON ARCADE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #030308;
+            color: #fff;
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Neon Glow Utility Effects */
+        .glow-cyan {
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.8), 0 0 20px rgba(0, 243, 255, 0.5);
+        }
+        .glow-pink {
+            text-shadow: 0 0 10px rgba(255, 0, 127, 0.8), 0 0 20px rgba(255, 0, 127, 0.5);
+        }
+        .box-glow-cyan {
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.4), inset 0 0 15px rgba(0, 243, 255, 0.2);
+        }
+        .box-glow-pink {
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.4), inset 0 0 15px rgba(255, 0, 127, 0.2);
+        }
+
+        /* Scanline Overlay for CRT feel */
+        .scanlines {
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+        }
+
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center h-screen w-screen relative">
+
+    <!-- Scanline Effect -->
+    <div class="scanlines absolute inset-0 z-20 pointer-events-none"></div>
+
+    <!-- HUD Overlay -->
+    <div id="hud" class="absolute top-0 left-0 w-full p-4 z-10 flex justify-between items-start pointer-events-none hidden">
+        <div class="flex flex-col gap-1">
+            <div class="text-xs text-cyan-400 font-orbitron tracking-widest uppercase">Score</div>
+            <div id="scoreDisplay" class="text-3xl font-orbitron font-black text-cyan-300 glow-cyan">0</div>
+            <div class="text-xs text-pink-500 font-orbitron tracking-widest uppercase mt-2">Multiplier</div>
+            <div id="multiplierDisplay" class="text-xl font-orbitron font-bold text-pink-400">1x</div>
+        </div>
+
+        <!-- Health / Shield Bar -->
+        <div class="flex flex-col items-end gap-2">
+            <div class="text-xs text-pink-400 font-orbitron tracking-widest uppercase">Shield Generator</div>
+            <div class="w-48 sm:w-64 h-4 bg-gray-900 border border-pink-500/50 rounded-full overflow-hidden p-0.5 box-glow-pink">
+                <div id="healthBar" class="h-full bg-gradient-to-r from-pink-500 to-cyan-400 rounded-full transition-all duration-200" style="width: 100%;"></div>
+            </div>
+            <!-- High Score Display -->
+            <div class="text-xs text-gray-400 font-orbitron mt-1">BEST: <span id="hudHighScore" class="text-yellow-400">0</span></div>
+        </div>
+    </div>
+
+    <!-- Start / Game Over Screen Overlay -->
+    <div id="uiOverlay" class="absolute inset-0 z-30 flex items-center justify-center bg-black/80 backdrop-blur-md transition-opacity duration-300">
+        <div class="max-w-md w-full mx-4 p-8 bg-gray-950/90 border border-cyan-500/30 rounded-2xl box-glow-cyan text-center flex flex-col items-center">
+            
+            <h1 id="menuTitle" class="text-4xl sm:text-5xl font-orbitron font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-pink-500 to-yellow-400 glow-cyan mb-2">
+                CYBER-BLAST
+            </h1>
+            <p id="menuSubtitle" class="text-sm font-orbitron tracking-widest text-cyan-400/80 mb-6 uppercase">
+                Neon Retro Arcade
+            </p>
+
+            <!-- Score Stats (Shown on Game Over) -->
+            <div id="scoreStats" class="hidden my-4 w-full bg-gray-900/60 p-4 rounded-xl border border-gray-800 flex justify-around">
+                <div>
+                    <div class="text-xs text-gray-400 font-orbitron uppercase">Final Score</div>
+                    <div id="finalScore" class="text-2xl font-black font-orbitron text-cyan-300">0</div>
+                </div>
+                <div class="border-r border-gray-800"></div>
+                <div>
+                    <div class="text-xs text-gray-400 font-orbitron uppercase">High Score</div>
+                    <div id="highScore" class="text-2xl font-black font-orbitron text-yellow-400">0</div>
+                </div>
+            </div>
+
+            <div class="text-xs text-gray-400 my-4 text-left w-full space-y-1.5 bg-black/40 p-3 rounded-lg border border-cyan-900/30">
+                <p><span class="text-cyan-400 font-bold">CONTROLS:</span></p>
+                <p>• <span class="text-white">Desktop:</span> Arrow Keys / WASD to move, SPACE to fire</p>
+                <p>• <span class="text-white">Mobile/Touch:</span> Drag ship to move (Auto-fire)</p>
+                <p>• <span class="text-white">Collect:</span> <span class="text-cyan-400">⚡ Speed</span> | <span class="text-pink-400">🛡️ Shield</span> | <span class="text-yellow-400">🔱 Triple Fire</span></p>
+            </div>
+
+            <!-- Start / Restart Button -->
+            <button id="startBtn" class="mt-4 w-full py-4 bg-gradient-to-r from-cyan-500 to-pink-500 text-black font-orbitron font-black text-lg tracking-widest uppercase rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg hover:shadow-cyan-500/50 cursor-pointer">
+                LAUNCH SHIP
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Game Canvas -->
+    <canvas id="gameCanvas" class="w-full h-full"></canvas>
+
+    <script>
+        /**
+         * Web Audio Synthesizer for Retro Arcade Sounds
+         */
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playLaser() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.15);
+                
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+
+            playExplosion() {
+                if (!this.ctx) return;
+                const bufferSize = this.ctx.sampleRate * 0.3;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(800, this.ctx.currentTime);
+                filter.frequency.linearRampToValueAtTime(50, this.ctx.currentTime + 0.3);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                noise.start();
+            }
+
+            playPowerup() {
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.25);
+
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc.stop(now + 0.25);
+            }
+
+            playHit() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.1);
+
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+        }
+
+        const sfx = new SoundEffects();
+
+        /**
+         * Main Game Engine & Logic
+         */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI Element References
+        const uiOverlay = document.getElementById('uiOverlay');
+        const hud = document.getElementById('hud');
+        const startBtn = document.getElementById('startBtn');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const multiplierDisplay = document.getElementById('multiplierDisplay');
+        const healthBar = document.getElementById('healthBar');
+        const finalScoreText = document.getElementById('finalScore');
+        const highScoreText = document.getElementById('highScore');
+        const hudHighScore = document.getElementById('hudHighScore');
+        const scoreStats = document.getElementById('scoreStats');
+        const menuTitle = document.getElementById('menuTitle');
+        const menuSubtitle = document.getElementById('menuSubtitle');
+
+        // Responsive Canvas Resize
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            if (player) {
+                player.x = Math.min(player.x, width - player.radius);
+                player.y = Math.min(player.y, height - player.radius);
+            }
+        });
+
+        // Game State Variables
+        let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER
+        let score = 0;
+        let multiplier = 1;
+        let highScore = localStorage.getItem('neon_shooter_high_score') || 0;
+        let lastTime = 0;
+        let spawnTimer = 0;
+        let powerupTimer = 0;
+        let screenShakeTime = 0;
+
+        hudHighScore.innerText = highScore;
+
+        // Input Tracking
+        const keys = {};
+        let touchTarget = null;
+
+        window.addEventListener('keydown', (e) => keys[e.code] = true);
+        window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+        // Touch & Drag Controls
+        canvas.addEventListener('touchstart', (e) => {
+            if (gameState !== 'PLAYING') return;
+            const touch = e.touches[0];
+            touchTarget = { x: touch.clientX, y: touch.clientY };
+        }, { passive: true });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (gameState !== 'PLAYING') return;
+            const touch = e.touches[0];
+            touchTarget = { x: touch.clientX, y: touch.clientY };
+        }, { passive: true });
+
+        canvas.addEventListener('touchend', () => touchTarget = null);
+
+        // Mouse Drag Control Option
+        let isMouseDown = false;
+        canvas.addEventListener('mousedown', (e) => {
+            if (gameState === 'PLAYING') {
+                isMouseDown = true;
+                touchTarget = { x: e.clientX, y: e.clientY };
+            }
+        });
+        canvas.addEventListener('mousemove', (e) => {
+            if (isMouseDown && gameState === 'PLAYING') {
+                touchTarget = { x: e.clientX, y: e.clientY };
+            }
+        });
+        canvas.addEventListener('mouseup', () => { isMouseDown = false; touchTarget = null; });
+
+        /**
+         * Game Objects: Player, Bullet, Enemy, Particle, PowerUp, Star
+         */
+        class Player {
+            constructor() {
+                this.x = width / 2;
+                this.y = height * 0.8;
+                this.radius = 18;
+                this.speed = 450; // Pixels per second
+                this.maxHealth = 100;
+                this.health = 100;
+                this.fireRate = 0.12; // Seconds per shot
+                this.fireTimer = 0;
+                this.tripleShotTimer = 0;
+                this.shieldTimer = 0;
+                this.speedTimer = 0;
+            }
+
+            update(dt) {
+                let dx = 0;
+                let dy = 0;
+
+                // Keyboard movement
+                if (keys['ArrowLeft'] || keys['KeyA']) dx -= 1;
+                if (keys['ArrowRight'] || keys['KeyD']) dx += 1;
+                if (keys['ArrowUp'] || keys['KeyW']) dy -= 1;
+                if (keys['ArrowDown'] || keys['KeyS']) dy += 1;
+
+                // Normalize movement vector
+                if (dx !== 0 && dy !== 0) {
+                    dx *= 0.7071;
+                    dy *= 0.7071;
+                }
+
+                // Apply Speed Power-up
+                const currentSpeed = this.speedTimer > 0 ? this.speed * 1.5 : this.speed;
+                this.x += dx * currentSpeed * dt;
+                this.y += dy * currentSpeed * dt;
+
+                // Touch/Mouse Direct Drag smoothing
+                if (touchTarget) {
+                    const tx = touchTarget.x - this.x;
+                    const ty = touchTarget.y - this.y;
+                    this.x += tx * 12 * dt;
+                    this.y += ty * 12 * dt;
+                }
+
+                // Bounds checking
+                this.x = Math.max(this.radius, Math.min(width - this.radius, this.x));
+                this.y = Math.max(this.radius, Math.min(height - this.radius, this.y));
+
+                // Decrement powerup timers
+                if (this.tripleShotTimer > 0) this.tripleShotTimer -= dt;
+                if (this.shieldTimer > 0) this.shieldTimer -= dt;
+                if (this.speedTimer > 0) this.speedTimer -= dt;
+
+                // Shooting Logic
+                this.fireTimer += dt;
+                const isFiring = keys['Space'] || touchTarget !== null || isMouseDown;
+                if (isFiring && this.fireTimer >= this.fireRate) {
+                    this.shoot();
+                    this.fireTimer = 0;
+                }
+            }
+
+            shoot() {
+                sfx.playLaser();
+                if (this.tripleShotTimer > 0) {
+                    bullets.push(new Bullet(this.x - 12, this.y - 10, -0.15));
+                    bullets.push(new Bullet(this.x, this.y - 15, 0));
+                    bullets.push(new Bullet(this.x + 12, this.y - 10, 0.15));
+                } else {
+                    bullets.push(new Bullet(this.x, this.y - 15, 0));
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Shield Glow Effect
+                if (this.shieldTimer > 0) {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius + 12, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(0, 243, 255, 0.8)';
+                    ctx.lineWidth = 3;
+                    ctx.shadowColor = '#00f3ff';
+                    ctx.shadowBlur = 15;
+                    ctx.stroke();
+                }
+
+                // Player Ship Triangle Body
+                ctx.beginPath();
+                ctx.moveTo(0, -this.radius - 4);
+                ctx.lineTo(this.radius, this.radius);
+                ctx.lineTo(0, this.radius - 6);
+                ctx.lineTo(-this.radius, this.radius);
+                ctx.closePath();
+
+                ctx.fillStyle = '#050515';
+                ctx.fill();
+                ctx.lineWidth = 2.5;
+                ctx.strokeStyle = '#00f3ff';
+                ctx.shadowColor = '#00f3ff';
+                ctx.shadowBlur = 12;
+                ctx.stroke();
+
+                // Engine Thruster Flame Animation
+                const flameHeight = 10 + Math.random() * 8;
+                ctx.beginPath();
+                ctx.moveTo(-this.radius / 2, this.radius - 2);
+                ctx.lineTo(0, this.radius + flameHeight);
+                ctx.lineTo(this.radius / 2, this.radius - 2);
+                ctx.fillStyle = '#ff007f';
+                ctx.shadowColor = '#ff007f';
+                ctx.shadowBlur = 10;
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        class Bullet {
+            constructor(x, y, angleOffset = 0) {
+                this.x = x;
+                this.y = y;
+                this.radius = 4;
+                this.speed = 850;
+                this.angle = -Math.PI / 2 + angleOffset;
+                this.vx = Math.cos(this.angle) * this.speed;
+                this.vy = Math.sin(this.angle) * this.speed;
+            }
+
+            update(dt) {
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#00f3ff';
+                ctx.shadowColor = '#00f3ff';
+                ctx.shadowBlur = 10;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class Enemy {
+            constructor(type = 'STANDARD') {
+                this.type = type;
+                this.x = Math.random() * (width - 60) + 30;
+                this.y = -30;
+                this.radius = type === 'FAST' ? 12 : type === 'HEAVY' ? 26 : 18;
+                this.hp = type === 'HEAVY' ? 5 : 1;
+                this.maxHp = this.hp;
+                this.speed = type === 'FAST' ? 280 : type === 'HEAVY' ? 110 : 180;
+                this.color = type === 'FAST' ? '#ff007f' : type === 'HEAVY' ? '#ffea00' : '#a855f7';
+                this.rot = 0;
+                this.rotSpeed = (Math.random() - 0.5) * 4;
+            }
+
+            update(dt) {
+                this.y += this.speed * dt;
+                this.rot += this.rotSpeed * dt;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rot);
+
+                ctx.beginPath();
+                if (this.type === 'FAST') {
+                    // Diamond Shape
+                    ctx.moveTo(0, -this.radius);
+                    ctx.lineTo(this.radius, 0);
+                    ctx.lineTo(0, this.radius);
+                    ctx.lineTo(-this.radius, 0);
+                } else if (this.type === 'HEAVY') {
+                    // Hexagon Shape
+                    for (let i = 0; i < 6; i++) {
+                   
